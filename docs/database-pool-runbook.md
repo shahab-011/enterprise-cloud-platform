@@ -2,8 +2,10 @@
 
 The demo uses Python's standard-library SQLite driver with one short-lived connection per
 operation, a configurable busy timeout, WAL journaling, transaction rollback, and explicit
-connection closure. SQLite is file-backed local storage; it does not reproduce PostgreSQL
-connection-pool exhaustion or production database behavior.
+connection closure. File-backed storage is the default. Tests that use `:memory:` share a
+uniquely named in-memory database kept alive by an anchor connection, which the app closes at
+shutdown. SQLite does not reproduce PostgreSQL connection-pool exhaustion or production
+database behavior.
 
 ## Symptoms
 

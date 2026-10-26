@@ -28,3 +28,15 @@ def test_database_transaction_rolls_back_after_exception(tmp_path):
         raise RuntimeError("simulated failure")
 
     assert database.event_count() == 0
+
+
+def test_in_memory_database_persists_across_operation_connections():
+    database = DemoDatabase(":memory:")
+    try:
+        database.initialize()
+        database.record_event("test", "request-1")
+
+        assert database.ping()
+        assert database.event_count() == 1
+    finally:
+        database.close()

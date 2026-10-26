@@ -68,8 +68,11 @@ def create_app(
         configure_logging()
         db.initialize()
         logger.info("Platform demo started")
-        yield
-        logger.info("Platform demo stopped")
+        try:
+            yield
+        finally:
+            db.close()
+            logger.info("Platform demo stopped")
 
     app = FastAPI(title=app_settings.app_name, version="0.1.0", lifespan=lifespan)
     app.state.settings = app_settings

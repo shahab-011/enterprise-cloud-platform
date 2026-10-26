@@ -1,3 +1,10 @@
+import json
+import logging
+from io import StringIO
+
+from shared.logging_config import JsonFormatter
+
+
 def test_validate_active_demo_token(client):
     response = client.post(
         "/api/v1/auth/validate",
@@ -85,3 +92,38 @@ def test_missing_or_malformed_bearer_header_is_rejected(client):
     assert missing.status_code == malformed.status_code == 401
     assert missing.json()["error"]["code"] == "authentication_required"
     assert malformed.json()["error"]["code"] == "authentication_required"
+
+
+def test_authentication_credentials_are_not_in_structured_logs(client):
+    log_stream = StringIO()
+    handler = logging.StreamHandler(log_stream)
+    handler.setFormatter(JsonFormatter())
+    logger = logging.getLogger("services.platform_api")
+    logger.addHandler(handler)
+    try:
+        invalid_token = client.post(
+            "/api/v1/auth/validate",
+            json={"token": "sensitive-demo-token"},
+            headers={"X-Request-ID": "auth-log-token-001"},
+        )
+        invalid_bearer = client.get(
+            "/api/v1/users/me",
+            headers={
+                "Authorization": "Bearer sensitive-header-token",
+                "X-Request-ID": "auth-log-header-002",
+            },
+        )
+    finally:
+        logger.removeHandler(handler)
+        handler.close()
+
+    log_lines = log_stream.getvalue().splitlines()
+    records = [json.loads(line) for line in log_lines]
+
+    assert invalid_token.status_code == invalid_bearer.status_code == 401
+    assert "sensitive-demo-token" not in log_stream.getvalue()
+    assert "sensitive-header-token" not in log_stream.getvalue()
+    assert {record["request_id"] for record in records} == {
+        "auth-log-token-001",
+        "auth-log-header-002",
+    }

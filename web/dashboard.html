@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Local service health and request metrics for the Enterprise Cloud Platform demo.">
+    <title>Platform demo dashboard</title>
+    <style>
+      :root { color-scheme: light; font-family: system-ui, sans-serif; color: #172033; background: #f3f6fb; }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      main { width: min(100% - 2rem, 70rem); margin: 2rem auto; }
+      header, .card { background: white; border: 1px solid #dce3ee; border-radius: .75rem; padding: 1.25rem; }
+      header { margin-bottom: 1rem; }
+      h1 { margin: 0 0 .4rem; font-size: clamp(1.35rem, 4vw, 2rem); }
+      p { line-height: 1.5; }
+      .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+      .value { font-size: 1.5rem; font-weight: 700; overflow-wrap: anywhere; }
+      #notice { min-height: 1.5rem; }
+      @media (max-width: 640px) {
+        main { width: min(100% - 1rem, 70rem); margin: .5rem auto; }
+        header, .card { padding: 1rem; }
+        .grid { grid-template-columns: 1fr; gap: .65rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Enterprise Cloud Platform</h1>
+        <p>Local demo status only. These values come from this application process, not cloud infrastructure.</p>
+        <p id="notice" role="status">Loading local service metrics…</p>
+      </header>
+      <section class="grid" aria-label="Service metrics">
+        <article class="card"><h2>Application</h2><p class="value" id="health">Unknown</p></article>
+        <article class="card"><h2>Requests</h2><p class="value" id="requests">0</p></article>
+        <article class="card"><h2>Errors</h2><p class="value" id="errors">0</p></article>
+        <article class="card"><h2>Average response</h2><p class="value" id="latency">0 ms</p></article>
+      </section>
+    </main>
+    <script>
+      async function refresh() {
+        const [healthResponse, metricsResponse] = await Promise.all([
+          fetch("/health"),
+          fetch("/api/v1/metrics")
+        ]);
+        if (!healthResponse.ok || !metricsResponse.ok) throw new Error("Local endpoints are unavailable.");
+        const health = await healthResponse.json();
+        const metrics = await metricsResponse.json();
+        document.querySelector("#health").textContent = health.status;
+        document.querySelector("#requests").textContent = metrics.total_requests;
+        document.querySelector("#errors").textContent = metrics.error_count;
+        document.querySelector("#latency").textContent = `${metrics.average_response_time_ms} ms`;
+        document.querySelector("#notice").textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      }
+      refresh().catch(() => {
+        document.querySelector("#notice").textContent = "Could not load local metrics. Check that the API is running.";
+      });
+    </script>
+  </body>
+</html>
